@@ -1,0 +1,85 @@
+\documentclass{article}
+\title{A stupidly simple U2W example}
+\author{Lars Vilhuber}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+<<seed,echo=FALSE>>=
+set.seed(123)
+@
+
+<<setup,echo=FALSE>>=
+#library(printr)
+ssize <- 10
+snum <- 20
+totsize <- 1000
+lsize <- totsize - ssize*snum
+employment<-c(lsize,rep(ssize,snum))
+probability<-employment/sum(employment)
+
+bigdist<-1
+sdist <-10
+
+distances<-c(bigdist,rep(sdist,snum))
+
+implicates <- 10
+@
+\section{Setup}
+Suppose we have a firm with one establishment with of size \Sexpr{employment[1]}, and \Sexpr{length(employment)-1} smaller establishments of size \Sexpr{ssize}. Workers all live \Sexpr{bigdist} km away from the larger establishment, and \Sexpr{sdist} km from the smaller establishments. The true
+distribution of distances thus looks like
+
+<<truedist,echo=F>>=
+truedistances <- sample(distances,replace = T,sum(employment),prob = probability)
+hist(truedistances,nclass = 10,xlim = c(0,10),xlab = "Distance",main="True distances")
+@
+
+\section{A stupid simple U2W}
+In the U2W, we don't know what the true connection with workers looks like, so we have a model, based on distance and feasible establishments, imputes a link. From the model, \Sexpr{implicates} are drawn for each job.
+
+The expected distance in each job is therefore
+\begin{equation}
+E[d_{ij}] = \sum_{j} p_{ij} d_ij
+\end{equation}
+which in our simple setup is \textbf{\Sexpr{sum(distances*probability)} km}, which is also in this particular case the average distance in the data. In the U2W, we draw from this distribution \Sexpr{implicates} times, which yields a distribution of distances for a single implicate as follows:
+
+<<imp1,echo=FALSE>>=
+imp1 <- sample(distances,totsize,prob = probability,replace = T)
+hist(imp1,nclass = 10,xlim = c(0,10),xlab = c("Distance"),main = "Implicate 1")
+@
+
+Let's draw \Sexpr{implicates} samples for each job, then compute the expected distance for each job. Across all draws, we of course get the (approximately) correct distribution of employment across big and small establishments (weighted with 1/\Sexpr{implicates}):
+
+<<multimp,echo=FALSE,results='asis'>>=
+# this currently only works for the simple example
+multimp<-sample(distances,implicates*totsize,prob=probability,replace=T)
+library(xtable)
+print(xtable(table(multimp)/implicates))
+
+# compute the expected distance
+dim(multimp) <- c(totsize,implicates)
+expdist <- multimp %*% as.matrix(rep(1,implicates),nrow=implicates)
+expdist <- expdist/implicates
+avgexpdist <- sum(expdist)/totsize
+@
+
+\section{Computing expectations first}
+
+However, if we compute the expected distance per job, we get an average distance of \textbf{\Sexpr{avgexpdist}}, but the distribution of distances looks like this:
+
+<<multimp2,echo=FALSE>>=
+hist(expdist,nclass = 10,xlim = c(0,10),xlab = c("Distance"),main = "Expected distances")
+@
+
+
+\newpage
+\section{Other information}
+<<seed,eval=FALSE>>=
+@
+<<sysinfo>>=
+Sys.info()
+@
+
+
+\end{document}
